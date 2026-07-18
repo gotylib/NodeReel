@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="NodeReel.Api/NodeReel.Api.csproj" />
+  <Project Path="NodeReel.Application/NodeReel.Application.csproj" />
+  <Project Path="NodeReel.Domain/NodeReel.Domain.csproj" />
+  <Project Path="NodeReel.Infrastructure/NodeReel.Infrastructure.csproj" />
+</Solution>
