@@ -2,11 +2,22 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using NodeReel.Api;
 using NodeReel.Api.Middleware;
 using NodeReel.Infrastructure;
 using NodeReel.Infrastructure.Options;
 
+// Dokploy writes Environment Settings to .env beside the Dockerfile at build time.
+var envLoaded = EnvFileLoader.Load(
+    Path.Combine(AppContext.BaseDirectory, ".env"),
+    Path.Combine(Directory.GetCurrentDirectory(), ".env"),
+    "/app/.env");
+
 var builder = WebApplication.CreateBuilder(args);
+
+if (envLoaded > 0)
+    Console.WriteLine($"Loaded {envLoaded} setting(s) from .env file.");
+
 
 builder.Services.AddControllers()
     .AddJsonOptions(o =>

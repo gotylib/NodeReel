@@ -25,6 +25,10 @@ RUN apt-get update \
 WORKDIR /app
 COPY --from=build /app/publish .
 
+# Dokploy creates .env next to this Dockerfile from "Environment Settings" before build.
+# ASP.NET does not read .env by itself — Program.cs loads /app/.env at startup.
+COPY .env /app/.env
+
 ENV ASPNETCORE_URLS=http://+:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
 

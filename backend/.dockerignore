@@ -4,3 +4,4 @@
 **/.vs
 **/*.user
 **/appsettings.Development.json
+# Keep .env — Dokploy injects Environment Settings here at build time.
