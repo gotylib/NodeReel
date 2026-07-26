@@ -19,7 +19,7 @@ export function DeletableEdge({
   markerEnd,
   selected,
   className,
-}: EdgeProps) {
+}: EdgeProps & { className?: string }) {
   const { deleteElements } = useReactFlow()
   const [hovered, setHovered] = useState(false)
   const leaveTimer = useRef<number | null>(null)

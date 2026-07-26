@@ -27,12 +27,33 @@ Node-based video pipeline editor (n8n-style canvas) with a .NET main engine, Pos
 - Node.js 20+
 - **FFmpeg** on `PATH` *or* Docker (fallback image `mwader/static-ffmpeg` is used automatically if `ffmpeg` is missing)
 
-## Quick start
+## Quick start (Docker — full stack)
+
+```bash
+docker compose up -d --build
+```
+
+| Service | URL |
+|---------|-----|
+| UI | http://localhost:8080 |
+| API | http://localhost:5057 |
+| MinIO console | http://localhost:9101 |
+| Postgres | `localhost:5433` |
+
+Default admin: `admin` / `admin123`.
+
+Only infra (local `dotnet` / `npm` development):
+
+```bash
+docker compose up -d postgres minio minio-init
+```
+
+## Quick start (local)
 
 ### 1. Infra
 
 ```bash
-docker compose up -d
+docker compose up -d postgres minio minio-init
 ```
 
 Starts Postgres (`localhost:5433`) and MinIO (`localhost:9100`, console `9101`).  

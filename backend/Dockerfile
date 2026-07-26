@@ -1,0 +1,36 @@
+# syntax=docker/dockerfile:1
+
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+COPY NodeReel.Domain/NodeReel.Domain.csproj NodeReel.Domain/
+COPY NodeReel.Application/NodeReel.Application.csproj NodeReel.Application/
+COPY NodeReel.Infrastructure/NodeReel.Infrastructure.csproj NodeReel.Infrastructure/
+COPY NodeReel.Api/NodeReel.Api.csproj NodeReel.Api/
+
+RUN dotnet restore NodeReel.Api/NodeReel.Api.csproj
+
+COPY NodeReel.Domain/ NodeReel.Domain/
+COPY NodeReel.Application/ NodeReel.Application/
+COPY NodeReel.Infrastructure/ NodeReel.Infrastructure/
+COPY NodeReel.Api/ NodeReel.Api/
+
+RUN dotnet publish NodeReel.Api/NodeReel.Api.csproj -c Release -o /app/publish /p:UseAppHost=false
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY --from=build /app/publish .
+
+ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_ENVIRONMENT=Production
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=10s --timeout=5s --retries=10 --start-period=20s \
+  CMD curl -fsS http://127.0.0.1:8080/health >/dev/null || exit 1
+
+ENTRYPOINT ["dotnet", "NodeReel.Api.dll"]

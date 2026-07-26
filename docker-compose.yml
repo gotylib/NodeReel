@@ -27,10 +27,11 @@ services:
     volumes:
       - minio_data:/data
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 5s
       timeout: 5s
       retries: 10
+      # Some MinIO tags ship without curl; compose still starts api after minio-init.
 
   minio-init:
     image: minio/mc:latest
@@ -39,11 +40,51 @@ services:
         condition: service_started
     entrypoint: >
       /bin/sh -c "
-      sleep 3;
-      mc alias set local http://minio:9000 minioadmin minioadmin;
+      until mc alias set local http://minio:9000 minioadmin minioadmin; do sleep 1; done;
       mc mb -p local/nodereel || true;
       exit 0;
       "
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      minio-init:
+        condition: service_completed_successfully
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Default: Host=postgres;Port=5432;Database=nodereel;Username=nodereel;Password=nodereel
+      Minio__Endpoint: minio:9000
+      Minio__AccessKey: minioadmin
+      Minio__SecretKey: minioadmin
+      Minio__Bucket: nodereel
+      Minio__UseSsl: "false"
+      Ffmpeg__BinaryPath: ffmpeg
+      Auth__JwtKey: NodeReel-docker-secret-change-me-please-32+
+      Auth__JwtIssuer: NodeReel
+      Auth__JwtAudience: NodeReel
+      Auth__TokenLifetimeHours: "72"
+      Auth__AdminUsername: admin
+      Auth__AdminPassword: admin123
+    ports:
+      - "5057:8080"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "8080:80"
+    restart: unless-stopped
 
 volumes:
   postgres_data:
