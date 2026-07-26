@@ -42,6 +42,25 @@ docker compose up -d --build
 
 Default admin: `admin` / `admin123`.
 
+### App only (external Postgres + MinIO)
+
+When DB and MinIO already run in other containers (e.g. Dokploy):
+
+```bash
+cp .env.app.example .env.app
+# edit hosts/passwords + EXTERNAL_NETWORK (Docker network name shared with postgres/minio)
+docker compose -f docker-compose.app.yml --env-file .env.app up -d --build
+```
+
+In Dokploy: deploy this compose file, set the same env vars, attach to the project network where Postgres/MinIO live, create bucket `nodereel` if missing.
+
+### Dokploy — separate Frontend + Backend apps
+
+1. One project; Postgres + MinIO already running there (same Docker network).
+2. **Backend** app: Build Path `/backend`, port `8080`. Env — see `.env.dokploy.example` (BACKEND section).
+3. **Frontend** app: Build Path `/frontend`, port `80`. Env: `API_UPSTREAM=http://<backend-service-name>:8080`.
+4. Domain / HTTPS on the **frontend**. Create MinIO bucket `nodereel`.
+
 Only infra (local `dotnet` / `npm` development):
 
 ```bash

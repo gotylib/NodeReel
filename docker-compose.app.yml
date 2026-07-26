@@ -1,0 +1,57 @@
+# App-only stack: API + frontend.
+# Use when Postgres and MinIO already run elsewhere (Dokploy services, another compose, etc.).
+#
+#   docker compose -f docker-compose.app.yml --env-file .env.app up -d --build
+#
+# Put api+frontend on the SAME Docker network as postgres/minio (Dokploy project network),
+# or use reachable hostnames/IPs in POSTGRES_HOST / MINIO_ENDPOINT.
+
+services:
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Default: Host=${POSTGRES_HOST};Port=${POSTGRES_PORT:-5432};Database=${POSTGRES_DB:-nodereel};Username=${POSTGRES_USER:-nodereel};Password=${POSTGRES_PASSWORD}
+      Minio__Endpoint: ${MINIO_ENDPOINT}
+      Minio__AccessKey: ${MINIO_ACCESS_KEY:-minioadmin}
+      Minio__SecretKey: ${MINIO_SECRET_KEY}
+      Minio__Bucket: ${MINIO_BUCKET:-nodereel}
+      Minio__UseSsl: ${MINIO_USE_SSL:-false}
+      Ffmpeg__BinaryPath: ffmpeg
+      Auth__JwtKey: ${AUTH_JWT_KEY}
+      Auth__JwtIssuer: ${AUTH_JWT_ISSUER:-NodeReel}
+      Auth__JwtAudience: ${AUTH_JWT_AUDIENCE:-NodeReel}
+      Auth__TokenLifetimeHours: ${AUTH_TOKEN_HOURS:-72}
+      Auth__AdminUsername: ${AUTH_ADMIN_USERNAME:-admin}
+      Auth__AdminPassword: ${AUTH_ADMIN_PASSWORD}
+    ports:
+      - "${API_PORT:-5057}:8080"
+    restart: unless-stopped
+    networks:
+      - default
+      - external_net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    depends_on:
+      - api
+    environment:
+      API_UPSTREAM: ${API_UPSTREAM:-http://api:8080}
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    restart: unless-stopped
+    networks:
+      - default
+      - external_net
+
+networks:
+  # Attach to the Docker network where postgres/minio already live (Dokploy project network).
+  # Leave external: true and set EXTERNAL_NETWORK in .env.app, e.g. dokploy-network
+  external_net:
+    external: true
+    name: ${EXTERNAL_NETWORK:-dokploy-network}

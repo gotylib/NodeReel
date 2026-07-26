@@ -16,5 +16,8 @@ frontend/dist/
 .env
 .env.*
 !.env.example
+!.env.*.example
+!.env.app.example
+!.env.dokploy.example
 
 tools/ffmpeg.zip
