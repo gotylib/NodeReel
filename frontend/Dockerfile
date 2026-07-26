@@ -18,6 +18,9 @@ RUN chmod +x /docker-entrypoint.sh
 
 COPY --from=build /app/dist /usr/share/nginx/html
 
+# Dokploy creates .env from Environment Settings before build.
+COPY .env /app/.env
+
 ENV API_UPSTREAM=http://api:8080
 
 EXPOSE 80
