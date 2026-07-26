@@ -91,6 +91,8 @@ public static class DependencyInjection
 
         var storage = scope.ServiceProvider.GetRequiredService<IObjectStorage>();
         var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("InfrastructureInit");
+        var minio = scope.ServiceProvider.GetRequiredService<IOptions<MinioOptions>>().Value;
+        logger.LogInformation("MinIO endpoint configured as {Endpoint} (bucket {Bucket})", minio.Endpoint, minio.Bucket);
 
         for (var attempt = 1; attempt <= 10; attempt++)
         {
@@ -101,7 +103,7 @@ public static class DependencyInjection
             }
             catch (Exception ex) when (attempt < 10)
             {
-                logger.LogWarning(ex, "MinIO not ready (attempt {Attempt}/10), retrying...", attempt);
+                logger.LogWarning(ex, "MinIO not ready (attempt {Attempt}/10), endpoint={Endpoint}, retrying...", attempt, minio.Endpoint);
                 await Task.Delay(TimeSpan.FromSeconds(2), ct);
             }
         }
