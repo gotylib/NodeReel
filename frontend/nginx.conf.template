@@ -21,6 +21,16 @@ server {
         proxy_request_buffering off;
     }
 
+    location = /favicon.ico {
+        add_header Cache-Control "no-cache";
+        try_files /favicon.ico =404;
+    }
+
+    location ~* ^/(favicon\.svg|nr-icon\.svg|favicon-32\.png)$ {
+        add_header Cache-Control "no-cache";
+        try_files $uri =404;
+    }
+
     location / {
         try_files $uri $uri/ /index.html;
     }
