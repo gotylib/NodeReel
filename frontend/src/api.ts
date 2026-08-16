@@ -22,6 +22,7 @@ export type NodeDescriptor = {
       maximum?: number
       default?: number | string
       description?: string
+      enum?: string[]
     }>
     required?: string[]
   }

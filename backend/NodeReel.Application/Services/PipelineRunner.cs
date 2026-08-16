@@ -264,7 +264,7 @@ public sealed class PipelineRunner : IPipelineRunner
 
             if (edge is null)
             {
-                if (port.Required && descriptor.Id is not (LocalNodeIds.UploadVideo or LocalNodeIds.UploadImage or LocalNodeIds.UploadAudio or LocalNodeIds.Merge))
+                if (port.Required && descriptor.Id is not (LocalNodeIds.UploadVideo or LocalNodeIds.UploadImage or LocalNodeIds.UploadAudio or LocalNodeIds.DownloadSocialVideo or LocalNodeIds.Merge))
                     throw new InvalidOperationException($"Node '{node.Id}' missing required input '{port.Name}'.");
                 continue;
             }
@@ -313,7 +313,7 @@ public sealed class PipelineRunner : IPipelineRunner
 
         foreach (var port in descriptor.Inputs.Where(p => p.Required))
         {
-            if (descriptor.Id is LocalNodeIds.UploadVideo or LocalNodeIds.UploadImage or LocalNodeIds.UploadAudio)
+            if (descriptor.Id is LocalNodeIds.UploadVideo or LocalNodeIds.UploadImage or LocalNodeIds.UploadAudio or LocalNodeIds.DownloadSocialVideo)
                 continue;
             if (!inputs.ContainsKey(port.Name))
                 throw new InvalidOperationException($"Node '{node.Id}' missing required input '{port.Name}'.");

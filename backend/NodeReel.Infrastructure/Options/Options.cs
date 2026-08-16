@@ -16,3 +16,9 @@ public sealed class FfmpegOptions
     public string BinaryPath { get; set; } = "ffmpeg";
     public string TempDirectory { get; set; } = Path.Combine(Path.GetTempPath(), "nodereel");
 }
+
+public sealed class YtDlpOptions
+{
+    public const string SectionName = "YtDlp";
+    public string BinaryPath { get; set; } = "yt-dlp";
+}

@@ -55,6 +55,7 @@ export function ParamsPanel({
       maximum?: number
       default?: number | string
       description?: string
+      enum?: string[]
     }
   >
   const entries = Object.entries(properties)
@@ -196,20 +197,38 @@ export function ParamsPanel({
       {entries.map(([key, schema]) => {
         if (isUploadNode && key === 'objectKey') return null
         const value = data.params[key] ?? schema.default ?? ''
+        const options = schema.enum
         return (
           <label key={key} className="nr-field">
             <span>{key}</span>
-            <input
-              type={schema.type === 'number' ? 'number' : 'text'}
-              min={schema.minimum}
-              max={schema.maximum}
-              value={value}
-              onChange={(e) => {
-                const next = { ...data.params }
-                next[key] = schema.type === 'number' ? Number(e.target.value) : e.target.value
-                onChange(node.id, next)
-              }}
-            />
+            {options && options.length > 0 ? (
+              <select
+                value={String(value)}
+                onChange={(e) => {
+                  const next = { ...data.params }
+                  next[key] = e.target.value
+                  onChange(node.id, next)
+                }}
+              >
+                {options.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type={schema.type === 'number' ? 'number' : 'text'}
+                min={schema.minimum}
+                max={schema.maximum}
+                value={value}
+                onChange={(e) => {
+                  const next = { ...data.params }
+                  next[key] = schema.type === 'number' ? Number(e.target.value) : e.target.value
+                  onChange(node.id, next)
+                }}
+              />
+            )}
             {schema.description && <small>{schema.description}</small>}
           </label>
         )

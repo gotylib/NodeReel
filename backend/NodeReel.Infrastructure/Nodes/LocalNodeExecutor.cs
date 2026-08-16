@@ -11,17 +11,20 @@ public sealed class LocalNodeExecutor
 {
     private readonly IObjectStorage _storage;
     private readonly IVideoProcessor _video;
+    private readonly ISocialVideoDownloader _socialDownloader;
     private readonly FfmpegOptions _ffmpegOptions;
     private readonly ILogger<LocalNodeExecutor> _logger;
 
     public LocalNodeExecutor(
         IObjectStorage storage,
         IVideoProcessor video,
+        ISocialVideoDownloader socialDownloader,
         IOptions<FfmpegOptions> ffmpegOptions,
         ILogger<LocalNodeExecutor> logger)
     {
         _storage = storage;
         _video = video;
+        _socialDownloader = socialDownloader;
         _ffmpegOptions = ffmpegOptions.Value;
         if (string.IsNullOrWhiteSpace(_ffmpegOptions.TempDirectory))
             _ffmpegOptions.TempDirectory = Path.Combine(Path.GetTempPath(), "nodereel");
@@ -69,6 +72,19 @@ public sealed class LocalNodeExecutor
             Inputs = [],
             Outputs = [new NodePort { Name = "audio", Type = "audio", Required = true }],
             ParamsSchema = NodeSchemaHelper.UploadParamsSchema("audio")
+        },
+        new NodeDescriptor
+        {
+            Id = LocalNodeIds.DownloadSocialVideo,
+            ProviderId = LocalNodeIds.ProviderId,
+            Name = "Download social video",
+            Category = "input",
+            Description = "Downloads a public video from YouTube, TikTok, or Instagram.",
+            Icon = "download",
+            Subtitle = "yt-dlp",
+            Inputs = [],
+            Outputs = [new NodePort { Name = "video", Type = "video", Required = true }],
+            ParamsSchema = NodeSchemaHelper.SocialDownloadParamsSchema()
         },
         new NodeDescriptor
         {
@@ -219,7 +235,7 @@ public sealed class LocalNodeExecutor
             ProviderId = LocalNodeIds.ProviderId,
             Name = "Flip video",
             Category = "video",
-            Description = "Flips video horizontally or vertically.",
+            Description = "Mirrors (flips) video horizontally or vertically.",
             Icon = "flip",
             Subtitle = "ffmpeg",
             Inputs = [new NodePort { Name = "video", Type = "video", Required = true }],
@@ -471,6 +487,7 @@ public sealed class LocalNodeExecutor
             LocalNodeIds.UploadVideo => ExecuteUpload(request, "video"),
             LocalNodeIds.UploadImage => ExecuteUpload(request, "image"),
             LocalNodeIds.UploadAudio => ExecuteUpload(request, "audio"),
+            LocalNodeIds.DownloadSocialVideo => await ExecuteDownloadSocialAsync(request, ct),
             LocalNodeIds.StripMetadata => await ExecuteStripAsync(request, ct),
             LocalNodeIds.AddInvisibleNoise => await ExecuteNoiseAsync(request, ct),
             LocalNodeIds.TrimVideo => await ExecuteTrimAsync(request, ct),
@@ -514,6 +531,49 @@ public sealed class LocalNodeExecutor
             Outputs = new Dictionary<string, string> { [outputPort] = key },
             Logs = [$"Using uploaded object {key}"]
         };
+    }
+
+    private async Task<NodeExecuteResponse> ExecuteDownloadSocialAsync(NodeExecuteRequest request, CancellationToken ct)
+    {
+        var url = (GetParamString(request, "url") ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(url))
+            throw new InvalidOperationException("Download social video requires params.url.");
+
+        var platform = (GetParamString(request, "platform") ?? "youtube").Trim().ToLowerInvariant();
+        EnsureUrlMatchesPlatform(platform, url);
+
+        var workId = Guid.NewGuid().ToString("N");
+        var outputPath = Path.Combine(_ffmpegOptions.TempDirectory, $"{workId}_social.mp4");
+
+        try
+        {
+            await _socialDownloader.DownloadAsync(url, outputPath, ct);
+            await using var upload = File.OpenRead(outputPath);
+            var key = await _storage.UploadAsync(upload, "video/mp4", preferredKey: null, ct);
+            return OkVideo(key, $"Downloaded {platform} video");
+        }
+        finally
+        {
+            TryDelete(outputPath);
+        }
+    }
+
+    private static void EnsureUrlMatchesPlatform(string platform, string url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            throw new InvalidOperationException("Invalid video URL.");
+
+        var host = uri.Host.ToLowerInvariant();
+        var ok = platform switch
+        {
+            "youtube" => host.Contains("youtube", StringComparison.Ordinal) || host.Contains("youtu.be", StringComparison.Ordinal),
+            "tiktok" => host.Contains("tiktok", StringComparison.Ordinal),
+            "instagram" => host.Contains("instagram", StringComparison.Ordinal) || host.Contains("instagr.am", StringComparison.Ordinal),
+            _ => throw new InvalidOperationException("Platform must be youtube, tiktok, or instagram.")
+        };
+
+        if (!ok)
+            throw new InvalidOperationException($"URL host '{uri.Host}' does not match platform '{platform}'.");
     }
 
     private static NodeExecuteResponse ExecuteIf(NodeExecuteRequest request)
