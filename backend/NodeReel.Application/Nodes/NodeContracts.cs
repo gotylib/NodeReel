@@ -45,6 +45,7 @@ public static class LocalNodeIds
     public const string UploadVideo = "upload-video";
     public const string UploadImage = "upload-image";
     public const string UploadAudio = "upload-audio";
+    public const string DownloadSocialVideo = "download-social-video";
 
     public const string StripMetadata = "strip-metadata";
     public const string AddInvisibleNoise = "add-invisible-noise";
@@ -290,10 +291,33 @@ public static class NodeSchemaHelper
                 direction = new
                 {
                     type = "string",
+                    @enum = new[] { "horizontal", "vertical" },
                     @default = "horizontal",
-                    description = "horizontal | vertical"
+                    description = "Mirror horizontally or vertically"
                 }
             }
+        }, Options);
+
+    public static JsonElement SocialDownloadParamsSchema() =>
+        JsonSerializer.SerializeToElement(new
+        {
+            type = "object",
+            properties = new
+            {
+                platform = new
+                {
+                    type = "string",
+                    @enum = new[] { "youtube", "tiktok", "instagram" },
+                    @default = "youtube",
+                    description = "Source platform"
+                },
+                url = new
+                {
+                    type = "string",
+                    description = "Public video URL"
+                }
+            },
+            required = new[] { "url" }
         }, Options);
 
     public static JsonElement FadeParamsSchema() =>

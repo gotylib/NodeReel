@@ -661,7 +661,8 @@ button, input, select {
   gap: 0.35rem;
   margin-bottom: 0.85rem;
 }
-.nr-field input {
+.nr-field input,
+.nr-field select {
   border: 1px solid var(--line);
   background: var(--bg);
   color: var(--text);

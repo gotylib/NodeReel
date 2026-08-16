@@ -13,6 +13,11 @@ public interface IObjectStorage
     Task<bool> ExistsAsync(string objectKey, CancellationToken ct = default);
 }
 
+public interface ISocialVideoDownloader
+{
+    Task DownloadAsync(string url, string outputPath, CancellationToken ct = default);
+}
+
 public interface IVideoProcessor
 {
     Task StripMetadataAsync(string inputPath, string outputPath, CancellationToken ct = default);

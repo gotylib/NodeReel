@@ -8,6 +8,12 @@ const icons: Record<string, ReactNode> = {
       <path d="M5 18h14" />
     </svg>
   ),
+  download: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M12 4v10M12 14l-4-4M12 14l4-4" />
+      <path d="M5 18h14" />
+    </svg>
+  ),
   strip: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
       <rect x="4" y="5" width="16" height="14" rx="2" />
@@ -175,6 +181,7 @@ const icons: Record<string, ReactNode> = {
 export function resolveNodeIcon(descriptor: NodeDescriptor): string {
   if (descriptor.icon) return descriptor.icon
   if (descriptor.id.includes('upload')) return 'upload'
+  if (descriptor.id.includes('download')) return 'download'
   if (descriptor.id.includes('strip') || descriptor.id.includes('meta')) return 'strip'
   if (descriptor.id.includes('noise')) return 'noise'
   if (descriptor.id.includes('echo')) return 'echo'

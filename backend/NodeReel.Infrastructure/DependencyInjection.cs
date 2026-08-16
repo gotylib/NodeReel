@@ -23,6 +23,7 @@ public static class DependencyInjection
     {
         services.Configure<MinioOptions>(configuration.GetSection(MinioOptions.SectionName));
         services.Configure<FfmpegOptions>(configuration.GetSection(FfmpegOptions.SectionName));
+        services.Configure<YtDlpOptions>(configuration.GetSection(YtDlpOptions.SectionName));
         services.Configure<AuthOptions>(configuration.GetSection(AuthOptions.SectionName));
 
         services.AddDbContext<AppDbContext>(options =>
@@ -65,6 +66,7 @@ public static class DependencyInjection
         services.AddScoped<IMediaObjectRepository, MediaObjectRepository>();
         services.AddSingleton<IObjectStorage, MinioObjectStorage>();
         services.AddSingleton<IVideoProcessor, FfmpegVideoProcessor>();
+        services.AddSingleton<ISocialVideoDownloader, YtDlpSocialDownloader>();
         services.AddSingleton<LocalNodeExecutor>();
         services.AddSingleton<INodeCatalog, AggregatingNodeCatalog>();
         services.AddScoped<INodeExecutor, CompositeNodeExecutor>();
