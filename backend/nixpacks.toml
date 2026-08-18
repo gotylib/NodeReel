@@ -1,0 +1,4 @@
+# Used when Dokploy/Nixpacks builds the API without backend/Dockerfile.
+# Prefer the Dockerfile (it also installs yt-dlp); this at least provides FFmpeg.
+[phases.setup]
+nixPkgs = ["...", "ffmpeg", "python3"]
