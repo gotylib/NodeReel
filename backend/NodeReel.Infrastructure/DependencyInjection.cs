@@ -110,6 +110,16 @@ public static class DependencyInjection
             }
         }
 
+        var ffmpeg = scope.ServiceProvider.GetRequiredService<IVideoProcessor>();
+        if (ffmpeg is FfmpegVideoProcessor probe)
+        {
+            var path = probe.ProbeFfmpegPath();
+            if (string.IsNullOrEmpty(path))
+                logger.LogWarning("FFmpeg was not found at startup. Video nodes will fail until ffmpeg is installed in this image.");
+            else
+                logger.LogInformation("FFmpeg ready at {Path}", path);
+        }
+
         var catalog = scope.ServiceProvider.GetRequiredService<INodeCatalog>();
         await catalog.RefreshAsync(ct);
     }

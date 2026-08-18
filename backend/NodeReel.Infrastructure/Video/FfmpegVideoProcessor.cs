@@ -12,7 +12,8 @@ public sealed class FfmpegVideoProcessor : IVideoProcessor
     private readonly FfmpegOptions _options;
     private readonly ILogger<FfmpegVideoProcessor> _logger;
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromMinutes(2);
-    private static bool? _nativeFfmpegAvailable;
+    private static string? _resolvedFfmpegPath;
+    private static bool _ffmpegResolved;
 
     public FfmpegVideoProcessor(IOptions<FfmpegOptions> options, ILogger<FfmpegVideoProcessor> logger)
     {
@@ -568,15 +569,27 @@ public sealed class FfmpegVideoProcessor : IVideoProcessor
 
     private async Task RunAsync(string[] args, CancellationToken ct, TimeSpan? timeout = null)
     {
-        if (IsNativeFfmpegAvailable())
+        var ffmpeg = ResolveNativeFfmpegPath();
+        if (!string.IsNullOrEmpty(ffmpeg))
         {
-            await RunProcessAsync(_options.BinaryPath, args, ct, timeout);
+            await RunProcessAsync(ffmpeg, args, ct, timeout);
             return;
         }
 
-        _logger.LogWarning("Native FFmpeg not found; using Docker image mwader/static-ffmpeg");
-        await RunViaDockerAsync(args, ct, timeout);
+        if (IsCommandAvailable("docker"))
+        {
+            _logger.LogWarning("Native FFmpeg not found; using Docker image mwader/static-ffmpeg");
+            await RunViaDockerAsync(args, ct, timeout);
+            return;
+        }
+
+        throw new InvalidOperationException(
+            "FFmpeg is not installed in this container, and Docker is not available as a fallback. " +
+            "Build the API with backend/Dockerfile (it installs ffmpeg) or add ffmpeg to the image. " +
+            "Tried: " + string.Join(", ", FfmpegCandidates()));
     }
+
+    internal string? ProbeFfmpegPath() => ResolveNativeFfmpegPath();
 
     private async Task RunViaDockerAsync(string[] args, CancellationToken ct, TimeSpan? timeout = null)
     {
@@ -605,17 +618,58 @@ public sealed class FfmpegVideoProcessor : IVideoProcessor
 
         await RunProcessAsync("docker", dockerArgs.ToArray(), ct, timeout);
     }
-    private bool IsNativeFfmpegAvailable()
+    private string? ResolveNativeFfmpegPath()
     {
-        if (_nativeFfmpegAvailable.HasValue)
-            return _nativeFfmpegAvailable.Value;
+        if (_ffmpegResolved)
+            return _resolvedFfmpegPath;
 
+        foreach (var candidate in FfmpegCandidates())
+        {
+            if (TryProbeCommand(candidate, "-version"))
+            {
+                _resolvedFfmpegPath = candidate;
+                _ffmpegResolved = true;
+                _logger.LogInformation("Using FFmpeg at {Path}", candidate);
+                return candidate;
+            }
+        }
+
+        _ffmpegResolved = true;
+        _resolvedFfmpegPath = null;
+        _logger.LogWarning("FFmpeg not found. Candidates: {Candidates}", string.Join(", ", FfmpegCandidates()));
+        return null;
+    }
+
+    private IEnumerable<string> FfmpegCandidates()
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var raw in new[]
+        {
+            _options.BinaryPath,
+            "/usr/local/bin/ffmpeg",
+            "/usr/bin/ffmpeg",
+            "ffmpeg"
+        })
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+                continue;
+            var path = raw.Trim();
+            if (seen.Add(path))
+                yield return path;
+        }
+    }
+
+    private static bool IsCommandAvailable(string fileName) => TryProbeCommand(fileName, "--version")
+        || TryProbeCommand(fileName, "-v");
+
+    private static bool TryProbeCommand(string fileName, string versionArg)
+    {
         try
         {
             var psi = new ProcessStartInfo
             {
-                FileName = _options.BinaryPath,
-                ArgumentList = { "-version" },
+                FileName = fileName,
+                ArgumentList = { versionArg },
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
@@ -623,26 +677,20 @@ public sealed class FfmpegVideoProcessor : IVideoProcessor
             };
             using var p = Process.Start(psi);
             if (p is null)
-            {
-                _nativeFfmpegAvailable = false;
                 return false;
-            }
 
             if (!p.WaitForExit(3000))
             {
                 TryKill(p);
-                _nativeFfmpegAvailable = false;
                 return false;
             }
 
-            _nativeFfmpegAvailable = p.ExitCode == 0;
+            return p.ExitCode == 0;
         }
         catch
         {
-            _nativeFfmpegAvailable = false;
+            return false;
         }
-
-        return _nativeFfmpegAvailable.Value;
     }
 
     private async Task RunProcessAsync(string fileName, string[] args, CancellationToken ct, TimeSpan? timeout = null)
